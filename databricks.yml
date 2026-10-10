@@ -1,0 +1,29 @@
+bundle:
+  name: opensky-platform
+
+variables:
+  catalog:
+    description: Target Unity Catalog
+    default: workspace
+  schema:
+    description: Target schema
+    default: opensky
+
+targets:
+  dev:
+    mode: development
+    default: true
+    workspace:
+      host: https://dbc-3fa69a0e-1c42.cloud.databricks.com
+    variables:
+      catalog: workspace
+      schema: opensky
+
+  prod:
+    mode: production
+    workspace:
+      host: https://adb-7405618361895520.0.azuredatabricks.net/
+      root_path: /Workspace/Users/${workspace.current_user.userName}/.bundle/${bundle.name}
+    variables:
+      catalog: dbr_dev
+      schema: radekgryciukk_opensky

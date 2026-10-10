@@ -1,0 +1,6 @@
+pytest
+chispa
+pyspark
+requests
+python-dotenv
+azure-eventhub
