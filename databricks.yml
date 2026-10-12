@@ -22,8 +22,22 @@ targets:
   prod:
     mode: production
     workspace:
-      host: https://adb-7405618361895520.0.azuredatabricks.net/
+      host: https://adb-7405618361895520.0.azuredatabricks.net
       root_path: /Workspace/Users/${workspace.current_user.userName}/.bundle/${bundle.name}
     variables:
       catalog: dbr_dev
       schema: radekgryciukk_opensky
+
+resources:
+  pipelines:
+    opensky_pipeline:
+      name: opensky-${bundle.target}
+      catalog: ${var.catalog}
+      schema: ${var.schema}
+      serverless: true
+      continuous: false
+      configuration:
+        landing_path: /Volumes/${var.catalog}/${var.schema}/landing
+      libraries:
+        - file:
+            path: src/pipeline/opensky_pipeline.py
