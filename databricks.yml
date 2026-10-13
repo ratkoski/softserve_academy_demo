@@ -41,3 +41,19 @@ resources:
       libraries:
         - file:
             path: src/pipeline/opensky_pipeline.py
+
+  jobs:
+    opensky_refresh:
+      name: opensky-refresh-${bundle.target}
+      tasks:
+        - task_key: bronze_to_silver
+          pipeline_task:
+            pipeline_id: ${resources.pipelines.opensky_pipeline.id}
+        - task_key: build_gold
+          depends_on:
+            - task_key: bronze_to_silver
+          notebook_task:
+            notebook_path: src/gold/build_gold.py
+            base_parameters:
+              catalog: ${var.catalog}
+              schema: ${var.schema}
