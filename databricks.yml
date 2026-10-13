@@ -22,7 +22,7 @@ targets:
   prod:
     mode: production
     workspace:
-      host: https://adb-7405604503619901.1.azuredatabricks.net
+      host: https://adb-7405618361895520.0.azuredatabricks.net
       root_path: /Workspace/Users/${workspace.current_user.userName}/.bundle/${bundle.name}
     variables:
       catalog: dbr_dev
