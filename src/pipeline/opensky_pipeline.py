@@ -1,4 +1,3 @@
-# src/pipeline/opensky_pipeline.py
 # Lakeflow Spark Declarative Pipeline: three sources -> bronze -> silver.
 #   positions  (JSON snapshots from the producer)   -> streaming, with expectations + quarantine
 #   aircraft   (OpenSky registry CSV)               -> streaming, SCD Type 2 via AUTO CDC
@@ -14,7 +13,7 @@ LANDING = spark.conf.get("landing_path")   # /Volumes/<catalog>/<schema>/landing
 BBOX = dict(lamin=49.0, lomin=14.1, lamax=54.9, lomax=24.2)
 
 
-# ---------------------------------------------------------------- BRONZE ----
+# BRONZE
 # Auto Loader reads directories, not files: each source gets its own folder.
 
 @dp.table(name="bronze_positions", comment="Raw aircraft state vectors as emitted by the producer.")
@@ -49,7 +48,7 @@ def bronze_airports():
         .withColumn("ingestion_ts", F.current_timestamp()))
 
 
-# ---------------------------------------------------------------- SILVER ----
+# SILVER
 # Positions: typed, cleaned, validated. A flagged view feeds two tables —
 # valid rows into silver, failing rows into quarantine with their reasons —
 # so nothing is silently dropped.

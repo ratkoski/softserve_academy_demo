@@ -78,7 +78,7 @@ positions = spark.read.table(T("silver_positions"))
 aircraft  = spark.read.table(T("dim_aircraft")).filter("aircraft_key <> -1")
 
 # As-of join: pick the aircraft version that was valid when the position was recorded.
-# This is the SCD2 join, a plain join on icao24 would fan out across versions.
+# This is the SCD2 join — a plain join on icao24 would fan out across versions.
 fact = (positions.alias("p")
     .join(aircraft.alias("a"),
           (F.col("p.icao24") == F.col("a.icao24")) &
