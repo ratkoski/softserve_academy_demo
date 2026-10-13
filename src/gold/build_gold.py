@@ -1,3 +1,4 @@
+# src/gold/build_gold.py
 # Gold layer: star schema over silver positions, plus serving aggregates.
 # Runs as a Lakeflow Job task after the pipeline. Dimensions and aggregates are
 # rebuilt in full (they are small); the fact table is rebuilt in full for now —

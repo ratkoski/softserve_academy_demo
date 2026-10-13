@@ -1,3 +1,4 @@
+# src/pipeline/opensky_pipeline.py
 # Lakeflow Spark Declarative Pipeline: three sources -> bronze -> silver.
 #   positions  (JSON snapshots from the producer)   -> streaming, with expectations + quarantine
 #   aircraft   (OpenSky registry CSV)               -> streaming, SCD Type 2 via AUTO CDC
