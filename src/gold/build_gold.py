@@ -1,3 +1,4 @@
+# Databricks notebook source
 # src/gold/build_gold.py
 # Gold layer: star schema over silver positions, plus serving aggregates.
 # Runs as a Lakeflow Job task after the pipeline. Dimensions and aggregates are
@@ -44,13 +45,21 @@ dim_time = (spark.range(24).withColumnRenamed("id", "hour_key")
          .otherwise("evening")))
 save(dim_time, "dim_time")
 
+# The first known version of an aircraft is valid from the beginning of time,
+# not from the moment we first loaded the registry — otherwise positions observed
+# before the initial load would never resolve to any version.
+first_version = Window.partitionBy("icao24").orderBy("__START_AT")
+
 # dim_aircraft: every SCD2 version from silver, with a surrogate key per VERSION.
 # Hashing icao24 together with __START_AT is what keeps versions distinct —
 # hashing the business key alone would give every version the same key.
 dim_aircraft = (spark.read.table(T("silver_aircraft"))
+    .withColumn("version_no", F.row_number().over(first_version))
     .withColumn("aircraft_key", F.xxhash64("icao24", "__START_AT"))
     .withColumn("is_current", F.col("__END_AT").isNull())
-    .withColumnRenamed("__START_AT", "valid_from")
+    .withColumn("valid_from",
+        F.when(F.col("version_no") == 1, F.lit("1900-01-01").cast("timestamp"))
+         .otherwise(F.col("__START_AT")))
     .withColumnRenamed("__END_AT", "valid_to")
     .withColumn("operator", F.coalesce("operator", F.lit("Unknown")))
     .withColumn("manufacturername", F.coalesce("manufacturername", F.lit("Unknown")))
