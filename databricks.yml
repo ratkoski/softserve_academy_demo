@@ -27,6 +27,14 @@ targets:
     variables:
       catalog: dbr_dev
       schema: radekgryciukk_opensky
+    resources:
+      pipelines:
+        opensky_pipeline:
+          configuration:
+            positions_source: eventhub
+            eventhub_bootstrap: evhpl24databricks02.servicebus.windows.net:9093
+            eventhub_name: radekgryciukk-evh
+            eventhub_conn_str: "{{secrets/opensky/radekgryciukk-evh-cs}}"
 
 resources:
   pipelines:
