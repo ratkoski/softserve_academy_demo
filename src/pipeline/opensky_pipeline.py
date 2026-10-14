@@ -37,7 +37,8 @@ def bronze_positions():
     if POSITIONS_SOURCE == "eventhub":
         # Prod: consume Event Hubs through its Kafka-compatible endpoint. The connection
         # string arrives via pipeline configuration from a Key Vault-backed secret scope
-        conn = spark.conf.get("eventhub_conn_str")
+        scope, key = spark.conf.get("eventhub_secret_scope"), spark.conf.get("eventhub_secret_key")
+        conn = dbutils.secrets.get(scope, key)
         jaas = ('kafkashaded.org.apache.kafka.common.security.plain.PlainLoginModule required '
                 f'username="$ConnectionString" password="{conn}";')
         raw = (spark.readStream.format("kafka")

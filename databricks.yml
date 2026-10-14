@@ -34,7 +34,8 @@ targets:
             positions_source: eventhub
             eventhub_bootstrap: evhpl24databricks02.servicebus.windows.net:9093
             eventhub_name: radekgryciukk-evh
-            eventhub_conn_str: "{{secrets/opensky/radekgryciukk-evh-cs}}"
+            eventhub_secret_scope: opensky
+            eventhub_secret_key: radekgryciukk-evh-cs
 
 resources:
   pipelines:
