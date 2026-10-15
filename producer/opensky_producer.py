@@ -17,7 +17,7 @@ TOKEN_URL  = "https://auth.opensky-network.org/auth/realms/opensky-network/proto
 STATES_URL = "https://opensky-network.org/api/states/all"
 BBOX = {"lamin": 49.0, "lomin": 14.1, "lamax": 54.9, "lomax": 24.2}   # Poland
 
-# OpenSky returns each aircraft as a positional array; these are the 17 documented fields
+# OpenSky returns each aircraft as a positional array, keep only the 17 documented fields
 FIELDS = ["icao24", "callsign", "origin_country", "time_position", "last_contact",
           "longitude", "latitude", "baro_altitude", "on_ground", "velocity",
           "true_track", "vertical_rate", "sensors", "geo_altitude", "squawk",
@@ -55,7 +55,7 @@ def fetch_states(tm):
     r.raise_for_status()
     body = r.json()
     snapshot_ts = datetime.fromtimestamp(body["time"], tz=timezone.utc).isoformat()
-    # Positional array -> named dict; keep only the 17 documented fields
+    # Positional array -> named dict, keep only the 17 documented fields
     return [dict(zip(FIELDS, s[:17]), snapshot_ts=snapshot_ts)
             for s in (body.get("states") or [])]
 

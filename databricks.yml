@@ -66,3 +66,11 @@ resources:
             base_parameters:
               catalog: ${var.catalog}
               schema: ${var.schema}
+        - task_key: apply_governance
+          depends_on:
+            - task_key: build_gold
+          notebook_task:
+            notebook_path: src/governance/apply_policies.py
+            base_parameters:
+              catalog: ${var.catalog}
+              schema: ${var.schema}

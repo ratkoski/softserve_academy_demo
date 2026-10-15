@@ -34,7 +34,7 @@ dim_date = (spark.sql("SELECT explode(sequence(DATE'2026-01-01', DATE'2026-12-31
     .withColumn("is_weekend",   F.col("day_of_week") >= 6))
 save(dim_date, "dim_date")
 
-# dim_time: one row per hour — air traffic has a strong daily rhythm
+# dim_time: one row per hour - air traffic has a strong daily rhythm
 dim_time = (spark.range(24).withColumnRenamed("id", "hour_key")
     .withColumn("hour_key", F.col("hour_key").cast("int"))
     .withColumn("hour_label", F.format_string("%02d:00", F.col("hour_key")))
@@ -46,7 +46,7 @@ dim_time = (spark.range(24).withColumnRenamed("id", "hour_key")
 save(dim_time, "dim_time")
 
 # The first known version of an aircraft is valid from the beginning of time,
-# not from the moment we first loaded the registry — otherwise positions observed
+# not from the moment we first loaded the registry - otherwise positions observed
 # before the initial load would never resolve to any version.
 first_version = Window.partitionBy("icao24").orderBy("__START_AT")
 
@@ -82,13 +82,12 @@ dim_airport = (spark.read.table(T("silver_airports"))
 save(dim_airport, "dim_airport")
 
 
-# FACT
-
+# FACT TABLE
 positions = spark.read.table(T("silver_positions"))
 aircraft  = spark.read.table(T("dim_aircraft")).filter("aircraft_key <> -1")
 
 # As-of join: pick the aircraft version that was valid when the position was recorded.
-# This is the SCD2 join — a plain join on icao24 would fan out across versions.
+# This is the SCD2 join - a plain join on icao24 would fan out across versions.
 fact = (positions.alias("p")
     .join(aircraft.alias("a"),
           (F.col("p.icao24") == F.col("a.icao24")) &
@@ -110,7 +109,6 @@ save(fact, "fact_positions")
 
 
 # SERVING TABLES
-
 fact = spark.read.table(T("fact_positions"))
 dim_a = spark.read.table(T("dim_aircraft"))
 

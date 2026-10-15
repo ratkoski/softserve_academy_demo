@@ -73,8 +73,8 @@ def bronze_aircraft():
     return (spark.readStream.format("cloudFiles")
         .option("cloudFiles.format", "csv")
         .option("header", "true")
-        .option("multiLine", "true")        # quoted fields may contain newlines
-        .option("escape", '"')              # quotes inside quoted fields are doubled
+        .option("multiLine", "true")
+        .option("escape", '"')
         .option("cloudFiles.inferColumnTypes", "true")
         .load(f"{LANDING}/reference/aircraft")
         .withColumn("source_file", F.col("_metadata.file_name"))
