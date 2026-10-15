@@ -47,6 +47,7 @@ resources:
       continuous: false
       configuration:
         landing_path: /Volumes/${var.catalog}/${var.schema}/landing
+        src_root: ${workspace.file_path}/src
       libraries:
         - file:
             path: src/pipeline/opensky_pipeline.py
@@ -54,6 +55,10 @@ resources:
   jobs:
     opensky_refresh:
       name: opensky-refresh-${bundle.target}
+      schedule:
+        quartz_cron_expression: "0 */30 * * * ?" # every 30 minutes
+        timezone_id: Europe/Warsaw
+        pause_status: UNPAUSED # start the job immediately
       tasks:
         - task_key: bronze_to_silver
           pipeline_task:

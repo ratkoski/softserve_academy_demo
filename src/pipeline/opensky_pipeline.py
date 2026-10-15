@@ -4,16 +4,16 @@
 #   aircraft   (OpenSky CSV) -> streaming, SCD Type 2 via AUTO CDC
 #   airports   (OurAirports) -> materialized view, Poland + large airports
 # Paths, source type and secrets arrive through pipeline configuration set by the bundle.
-
+import sys
+sys.path.append(spark.conf.get("src_root"))
+from transformations import clean_positions, flag_positions
+from transformations import clean_positions, flag_positions, BBOX
 from pyspark import pipelines as dp
 from pyspark.sql import functions as F
 from pyspark.sql.types import StructType, StructField, StringType, DoubleType, LongType, BooleanType
 
 LANDING          = spark.conf.get("landing_path")                 # /Volumes/<catalog>/<schema>/landing
 POSITIONS_SOURCE = spark.conf.get("positions_source", "files")   # "files" | "eventhub"
-
-# Poland bounding box, same as the producer
-BBOX = dict(lamin=49.0, lomin=14.1, lamax=54.9, lomax=24.2)
 
 # Explicit schema for the Event Hubs path: from_json does not infer,
 # and production should not depend on inference anyway
@@ -96,22 +96,7 @@ def bronze_airports():
 
 @dp.temporary_view(name="positions_flagged")
 def positions_flagged():
-    df = (spark.readStream.table("bronze_positions")
-        .withColumn("callsign",        F.nullif(F.trim("callsign"), F.lit("")))
-        .withColumn("position_ts",     F.to_timestamp(F.col("time_position")))
-        .withColumn("last_contact_ts", F.to_timestamp(F.col("last_contact")))
-        .withColumn("snapshot_ts",     F.to_timestamp("snapshot_ts")))
-
-    rules = {
-        "missing_icao24":       F.col("icao24").isNull() | (F.col("icao24") == ""),
-        "missing_position":     F.col("latitude").isNull() | F.col("longitude").isNull(),
-        "outside_bbox":         ~F.col("latitude").between(BBOX["lamin"], BBOX["lamax"])
-                                | ~F.col("longitude").between(BBOX["lomin"], BBOX["lomax"]),
-        "implausible_altitude": F.col("baro_altitude") < -500,
-        "implausible_speed":    F.col("velocity") > 400,          # m/s; ~1440 km/h
-    }
-    reasons = F.array_compact(F.array(*[F.when(c, F.lit(n)) for n, c in rules.items()]))
-    return df.withColumn("rejection_reasons", reasons)
+    return flag_positions(clean_positions(spark.readStream.table("bronze_positions")))
 
 
 @dp.table(name="silver_positions", comment="Validated aircraft positions over Poland.")
