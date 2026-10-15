@@ -99,7 +99,7 @@ def positions_flagged():
     return flag_positions(clean_positions(spark.readStream.table("bronze_positions")))
 
 
-@dp.table(name="silver_positions", comment="Validated aircraft positions over Poland.")
+@dp.table(name="silver_positions", comment="Validated aircraft positions over Poland.", table_properties={"delta.enableChangeDataFeed": "true"})
 @dp.expect("position_recent", "snapshot_ts IS NOT NULL")
 def silver_positions():
     df = spark.readStream.table("positions_flagged").filter(F.size("rejection_reasons") == 0)

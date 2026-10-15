@@ -7,6 +7,8 @@
 
 from pyspark.sql import functions as F, Window
 from datetime import datetime
+from delta.tables import DeltaTable
+from pyspark.sql.utils import AnalysisException
 
 dbutils.widgets.text("catalog", "workspace")
 dbutils.widgets.text("schema", "opensky")
@@ -82,30 +84,68 @@ dim_airport = (spark.read.table(T("silver_airports"))
 save(dim_airport, "dim_airport")
 
 
-# FACT TABLE
-positions = spark.read.table(T("silver_positions"))
-aircraft  = spark.read.table(T("dim_aircraft")).filter("aircraft_key <> -1")
+spark.sql(f"CREATE TABLE IF NOT EXISTS {T('cdc_watermark')} (table_name STRING, last_version BIGINT) USING DELTA")
 
-# As-of join: pick the aircraft version that was valid when the position was recorded.
-# This is the SCD2 join - a plain join on icao24 would fan out across versions.
-fact = (positions.alias("p")
-    .join(aircraft.alias("a"),
-          (F.col("p.icao24") == F.col("a.icao24")) &
-          (F.col("p.snapshot_ts") >= F.col("a.valid_from")) &
-          (F.col("p.snapshot_ts") < F.coalesce(F.col("a.valid_to"), F.lit("9999-12-31").cast("timestamp"))),
-          "left")
-    .select(
-        F.col("p.icao24"), F.col("p.callsign"), F.col("p.origin_country"),
-        F.coalesce(F.col("a.aircraft_key"), F.lit(-1)).alias("aircraft_key"),
-        F.date_format("p.snapshot_ts", "yyyyMMdd").cast("int").alias("date_key"),
-        F.hour("p.snapshot_ts").alias("hour_key"),
-        F.col("p.snapshot_ts"), F.col("p.position_ts"),
-        F.col("p.latitude"), F.col("p.longitude"),
-        F.col("p.baro_altitude"), F.col("p.geo_altitude"),
-        F.col("p.velocity"), F.col("p.true_track"), F.col("p.vertical_rate"),
-        F.col("p.on_ground"), F.col("p.squawk"))
-    .withColumn("gold_loaded_at", F.lit(batch_ts).cast("timestamp")))
-save(fact, "fact_positions")
+silver_version = spark.sql(f"DESCRIBE HISTORY {T('silver_positions')} LIMIT 1").collect()[0]["version"]
+wm = spark.sql(f"SELECT last_version FROM {T('cdc_watermark')} WHERE table_name = 'silver_positions'").collect()
+start_version = wm[0]["last_version"] + 1 if wm else 0
+
+fact_exists = spark.catalog.tableExists(T("fact_positions"))
+
+if fact_exists and wm and start_version <= silver_version:
+    # Incremental path: only inserts since the last processed version
+    changes = (spark.read.format("delta")
+        .option("readChangeFeed", "true")
+        .option("startingVersion", start_version)
+        .option("endingVersion", silver_version)
+        .table(T("silver_positions"))
+        .filter("_change_type = 'insert'")
+        .drop("_change_type", "_commit_version", "_commit_timestamp"))
+    mode = "incremental"
+elif fact_exists and wm:
+    changes = None   # nothing new
+    mode = "noop"
+else:
+    changes = spark.read.table(T("silver_positions"))   # first load: full snapshot
+    mode = "initial"
+
+aircraft = spark.read.table(T("dim_aircraft")).filter("aircraft_key <> -1")
+
+def to_fact(positions):
+    return (positions.alias("p")
+        .join(aircraft.alias("a"),
+              (F.col("p.icao24") == F.col("a.icao24")) &
+              (F.col("p.snapshot_ts") >= F.col("a.valid_from")) &
+              (F.col("p.snapshot_ts") < F.coalesce(F.col("a.valid_to"), F.lit("9999-12-31").cast("timestamp"))),
+              "left")
+        .select(
+            F.col("p.icao24"), F.col("p.callsign"), F.col("p.origin_country"),
+            F.coalesce(F.col("a.aircraft_key"), F.lit(-1)).alias("aircraft_key"),
+            F.date_format("p.snapshot_ts", "yyyyMMdd").cast("int").alias("date_key"),
+            F.hour("p.snapshot_ts").alias("hour_key"),
+            F.col("p.snapshot_ts"), F.col("p.position_ts"),
+            F.col("p.latitude"), F.col("p.longitude"),
+            F.col("p.baro_altitude"), F.col("p.geo_altitude"),
+            F.col("p.velocity"), F.col("p.true_track"), F.col("p.vertical_rate"),
+            F.col("p.on_ground"), F.col("p.squawk"))
+        .withColumn("gold_loaded_at", F.lit(batch_ts).cast("timestamp")))
+
+if mode == "initial":
+    to_fact(changes).write.format("delta").mode("overwrite").option("overwriteSchema", "true").saveAsTable(T("fact_positions"))
+elif mode == "incremental":
+    # MERGE on the natural key (aircraft + snapshot time) keeps re-runs idempotent:
+    # a change already loaded matches and is left alone, a new one is inserted.
+    (DeltaTable.forName(spark, T("fact_positions")).alias("t")
+        .merge(to_fact(changes).alias("s"), "t.icao24 = s.icao24 AND t.snapshot_ts = s.snapshot_ts")
+        .whenNotMatchedInsertAll()
+        .execute())
+
+spark.sql(f"""MERGE INTO {T('cdc_watermark')} t USING (SELECT 'silver_positions' AS table_name, {silver_version} AS last_version) s
+             ON t.table_name = s.table_name WHEN MATCHED THEN UPDATE SET last_version = s.last_version WHEN NOT MATCHED THEN INSERT *""")
+
+n = spark.read.table(T("fact_positions")).count()
+rng = f"{start_version}→{silver_version}" if mode != "noop" else f"at version {silver_version}, nothing new"
+print(f"fact_positions: {n:,} rows  (mode={mode}, silver {rng})")
 
 
 # SERVING TABLES
