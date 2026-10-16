@@ -1,0 +1,844 @@
+{
+  "datasets": [
+    {
+      "name": "5f933ae7",
+      "displayName": "current_positions",
+      "config": {
+        "version": "1.1",
+        "source": "SELECT icao24, callsign, operator, model, manufacturername, origin_country,\n       latitude, longitude, baro_altitude, velocity, true_track, on_ground,\n       altitude_band, snapshot_ts\nFROM dbr_dev.radekgryciukk_opensky.current_positions\nWHERE snapshot_ts >= (SELECT MAX(snapshot_ts) FROM dbr_dev.radekgryciukk_opensky.current_positions) - INTERVAL 10 MINUTES",
+        "dimensions": [
+          {
+            "expr": "source.*"
+          }
+        ],
+        "measures": [
+          {
+            "name": "count",
+            "expr": "COUNT(*)",
+            "comment": "Represents the total number of rows in the dataset. Use this measure to count all",
+            "displayName": "Count"
+          }
+        ]
+      }
+    },
+    {
+      "name": "c74b6c71",
+      "displayName": "kpi",
+      "config": {
+        "version": "1.1",
+        "source": "SELECT distinct_aircraft, total_observations, snapshots, last_snapshot_at, avg_altitude_m\nFROM dbr_dev.radekgryciukk_opensky.agg_kpi",
+        "dimensions": [
+          {
+            "expr": "source.*"
+          }
+        ],
+        "measures": [
+          {
+            "name": "count",
+            "expr": "COUNT(*)",
+            "comment": "Represents the total number of rows in the dataset. Use this measure to count all",
+            "displayName": "Count"
+          }
+        ]
+      }
+    },
+    {
+      "name": "08f289b9",
+      "displayName": "hourly",
+      "config": {
+        "version": "1.1",
+        "source": "SELECT full_date, day_name, is_weekend, hour_key, distinct_aircraft, observations,\n       avg_altitude_m, avg_velocity_ms, on_ground_count\nFROM dbr_dev.radekgryciukk_opensky.agg_hourly_traffic",
+        "dimensions": [
+          {
+            "expr": "source.*"
+          }
+        ],
+        "measures": [
+          {
+            "name": "count",
+            "expr": "COUNT(*)",
+            "comment": "Represents the total number of rows in the dataset. Use this measure to count all",
+            "displayName": "Count"
+          }
+        ]
+      }
+    },
+    {
+      "name": "658b8b74",
+      "displayName": "by_operator",
+      "config": {
+        "version": "1.1",
+        "source": "SELECT operator, manufacturername, distinct_aircraft, observations, avg_altitude_m\nFROM dbr_dev.radekgryciukk_opensky.agg_by_operator\nWHERE operator <> 'Unknown'\nORDER BY distinct_aircraft DESC\nLIMIT 15",
+        "dimensions": [
+          {
+            "expr": "source.*"
+          }
+        ],
+        "measures": [
+          {
+            "name": "count",
+            "expr": "COUNT(*)",
+            "comment": "Represents the total number of rows in the dataset. Use this measure to count all",
+            "displayName": "Count"
+          }
+        ]
+      }
+    },
+    {
+      "name": "f384e424",
+      "displayName": "by_country",
+      "config": {
+        "version": "1.1",
+        "source": "SELECT origin_country, distinct_aircraft, observations\nFROM dbr_dev.radekgryciukk_opensky.agg_by_country\nORDER BY distinct_aircraft DESC\nLIMIT 15",
+        "dimensions": [
+          {
+            "expr": "source.*"
+          }
+        ],
+        "measures": [
+          {
+            "name": "count",
+            "expr": "COUNT(*)",
+            "comment": "Represents the total number of rows in the dataset. Use this measure to count all",
+            "displayName": "Count"
+          }
+        ]
+      }
+    },
+    {
+      "name": "84727c94",
+      "displayName": "positions",
+      "config": {
+        "version": "1.1",
+        "source": "SELECT icao24, callsign, operator, model, manufacturername, origin_country,\n       latitude, longitude, baro_altitude, velocity, true_track, on_ground,\n       altitude_band, snapshot_ts\nFROM dbr_dev.radekgryciukk_opensky.current_positions\nWHERE snapshot_ts >= (SELECT MAX(snapshot_ts) FROM dbr_dev.radekgryciukk_opensky.current_positions) - INTERVAL 10 MINUTES",
+        "dimensions": [
+          {
+            "expr": "source.*"
+          }
+        ],
+        "measures": [
+          {
+            "name": "count",
+            "expr": "COUNT(*)",
+            "comment": "Represents the total number of rows in the dataset. Use this measure to count all",
+            "displayName": "Count"
+          }
+        ]
+      }
+    }
+  ],
+  "pages": [
+    {
+      "name": "5343552a",
+      "displayName": "OpenSky",
+      "layout": [
+        {
+          "widget": {
+            "name": "aircraft-observed",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "c74b6c71",
+                  "fields": [
+                    {
+                      "name": "sum(distinct_aircraft)",
+                      "expression": "SUM(`distinct_aircraft`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "Aircraft observed",
+                  "fields": []
+                }
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(distinct_aircraft)"
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 3,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "observations",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "c74b6c71",
+                  "fields": [
+                    {
+                      "name": "sum(total_observations)",
+                      "expression": "SUM(`total_observations`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "Observations",
+                  "fields": []
+                }
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(total_observations)"
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 0,
+            "width": 3,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "snapshots",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "c74b6c71",
+                  "fields": [
+                    {
+                      "name": "sum(snapshots)",
+                      "expression": "SUM(`snapshots`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "Snapshots",
+                  "fields": []
+                }
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(snapshots)"
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 0,
+            "width": 3,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "last-update",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "c74b6c71",
+                  "fields": [
+                    {
+                      "name": "last_snapshot_at",
+                      "expression": "`last_snapshot_at`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "Last update (UTC)",
+                  "fields": []
+                }
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "last_snapshot_at"
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 9,
+            "y": 0,
+            "width": 3,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "current-aircraft-positions",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "5f933ae7",
+                  "fields": [
+                    {
+                      "name": "altitude_band",
+                      "expression": "`altitude_band`"
+                    },
+                    {
+                      "name": "latitude",
+                      "expression": "`latitude`"
+                    },
+                    {
+                      "name": "longitude",
+                      "expression": "`longitude`"
+                    },
+                    {
+                      "name": "callsign",
+                      "expression": "`callsign`"
+                    },
+                    {
+                      "name": "operator",
+                      "expression": "`operator`"
+                    },
+                    {
+                      "name": "model",
+                      "expression": "`model`"
+                    },
+                    {
+                      "name": "baro_altitude",
+                      "expression": "`baro_altitude`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "Current positions of aircrafts",
+                  "fields": []
+                }
+              },
+              "version": 2,
+              "widgetType": "symbol-map",
+              "encodings": {
+                "coordinates": {
+                  "coordinateType": "longitude-latitude",
+                  "latitude": {
+                    "fieldName": "latitude"
+                  },
+                  "longitude": {
+                    "fieldName": "longitude"
+                  }
+                },
+                "color": {
+                  "fieldName": "altitude_band",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "extra": [
+                  {
+                    "fieldName": "callsign"
+                  },
+                  {
+                    "fieldName": "operator"
+                  },
+                  {
+                    "fieldName": "model"
+                  },
+                  {
+                    "fieldName": "baro_altitude"
+                  }
+                ]
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 3,
+            "width": 12,
+            "height": 9
+          }
+        },
+        {
+          "widget": {
+            "name": "aircraft-by-hour-of-day",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "08f289b9",
+                  "fields": [
+                    {
+                      "name": "hour_key",
+                      "expression": "`hour_key`"
+                    },
+                    {
+                      "name": "avg(distinct_aircraft)",
+                      "expression": "AVG(`distinct_aircraft`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "Aircraft by hour of day",
+                  "fields": []
+                }
+              },
+              "version": 3,
+              "widgetType": "line",
+              "encodings": {
+                "x": {
+                  "fieldName": "hour_key",
+                  "displayName": "Hour (UTC)",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "y": {
+                  "fieldName": "avg(distinct_aircraft)",
+                  "displayName": "Avg. aircraft",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 13,
+            "width": 6,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "top-operators-fleet",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "658b8b74",
+                  "fields": [
+                    {
+                      "name": "sum(distinct_aircraft)",
+                      "expression": "SUM(`distinct_aircraft`)"
+                    },
+                    {
+                      "name": "operator",
+                      "expression": "`operator`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "Top operators by fleet",
+                  "fields": []
+                }
+              },
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "sum(distinct_aircraft)",
+                  "displayName": "Sum of aircrafts",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "y": {
+                  "fieldName": "operator",
+                  "displayName": "Operators",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 13,
+            "width": 6,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "country-registration",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "f384e424",
+                  "fields": [
+                    {
+                      "name": "sum(distinct_aircraft)",
+                      "expression": "SUM(`distinct_aircraft`)"
+                    },
+                    {
+                      "name": "origin_country",
+                      "expression": "`origin_country`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "Country of registration",
+                  "fields": []
+                }
+              },
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "sum(distinct_aircraft)",
+                  "displayName": "Sum of aircraft",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "y": {
+                  "fieldName": "origin_country",
+                  "displayName": "Country",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 19,
+            "width": 6,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "latest-reports",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "5f933ae7",
+                  "fields": [
+                    {
+                      "name": "callsign",
+                      "expression": "`callsign`"
+                    },
+                    {
+                      "name": "operator",
+                      "expression": "`operator`"
+                    },
+                    {
+                      "name": "model",
+                      "expression": "`model`"
+                    },
+                    {
+                      "name": "altitude_band",
+                      "expression": "`altitude_band`"
+                    },
+                    {
+                      "name": "snapshot_ts",
+                      "expression": "`snapshot_ts`"
+                    },
+                    {
+                      "name": "velocity",
+                      "expression": "`velocity`"
+                    }
+                  ],
+                  "disaggregated": true,
+                  "orders": [
+                    {
+                      "direction": "DESC",
+                      "expression": "`snapshot_ts`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "Latest reports",
+                  "fields": []
+                }
+              },
+              "version": 2,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "callsign"
+                  },
+                  {
+                    "fieldName": "operator"
+                  },
+                  {
+                    "fieldName": "model"
+                  },
+                  {
+                    "fieldName": "altitude_band"
+                  },
+                  {
+                    "fieldName": "snapshot_ts"
+                  },
+                  {
+                    "fieldName": "velocity"
+                  }
+                ],
+                "rowOrder": [
+                  {
+                    "by": "column-reversed",
+                    "field": {
+                      "index": 4
+                    }
+                  }
+                ]
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 19,
+            "width": 6,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "operator1",
+            "queries": [
+              {
+                "name": "dashboards/01f1c8121dd912d785bbf3631dcb72f5/datasets/01f1c81237f516bd8002987b2bcaa0ac_operator",
+                "query": {
+                  "datasetName": "5f933ae7",
+                  "fields": [
+                    {
+                      "name": "operator",
+                      "expression": "`operator`"
+                    },
+                    {
+                      "name": "operator_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "Operator",
+                  "fields": []
+                }
+              },
+              "widgetType": "filter-single-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "operator",
+                    "queryName": "dashboards/01f1c8121dd912d785bbf3631dcb72f5/datasets/01f1c81237f516bd8002987b2bcaa0ac_operator"
+                  }
+                ]
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 12,
+            "width": 4,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "altitude",
+            "queries": [
+              {
+                "name": "dashboards/01f1c8121dd912d785bbf3631dcb72f5/datasets/01f1c81237f516bd8002987b2bcaa0ac_altitude_band",
+                "query": {
+                  "datasetName": "5f933ae7",
+                  "fields": [
+                    {
+                      "name": "altitude_band",
+                      "expression": "`altitude_band`"
+                    },
+                    {
+                      "name": "altitude_band_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "Altitude",
+                  "fields": []
+                }
+              },
+              "widgetType": "filter-single-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "altitude_band",
+                    "queryName": "dashboards/01f1c8121dd912d785bbf3631dcb72f5/datasets/01f1c81237f516bd8002987b2bcaa0ac_altitude_band"
+                  }
+                ]
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 12,
+            "width": 4,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "on-ground",
+            "queries": [
+              {
+                "name": "dashboards/01f1c8121dd912d785bbf3631dcb72f5/datasets/01f1c81237f516bd8002987b2bcaa0ac_on_ground",
+                "query": {
+                  "datasetName": "5f933ae7",
+                  "fields": [
+                    {
+                      "name": "on_ground",
+                      "expression": "`on_ground`"
+                    },
+                    {
+                      "name": "on_ground_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "On ground",
+                  "fields": []
+                }
+              },
+              "widgetType": "filter-single-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "on_ground",
+                    "queryName": "dashboards/01f1c8121dd912d785bbf3631dcb72f5/datasets/01f1c81237f516bd8002987b2bcaa0ac_on_ground"
+                  }
+                ]
+              }
+            }
+          },
+          "position": {
+            "x": 8,
+            "y": 12,
+            "width": 4,
+            "height": 1
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layoutVersion": "GRID_V1"
+    }
+  ],
+  "uiSettings": {
+    "theme": {
+      "widgetHeaderAlignment": "ALIGNMENT_UNSPECIFIED"
+    },
+    "applyModeEnabled": false
+  }
+}
