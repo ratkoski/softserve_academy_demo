@@ -58,7 +58,7 @@ resources:
       schedule:
         quartz_cron_expression: "0 */30 * * * ?" # every 30 minutes
         timezone_id: Europe/Warsaw
-        pause_status: UNPAUSED # start the job immediately
+        pause_status: UNPAUSED
       tasks:
         - task_key: bronze_to_silver
           pipeline_task:
@@ -79,3 +79,4 @@ resources:
             base_parameters:
               catalog: ${var.catalog}
               schema: ${var.schema}
+              src_root: ${workspace.file_path}/src

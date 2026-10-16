@@ -14,6 +14,15 @@ dbutils.widgets.text("catalog", "workspace")
 dbutils.widgets.text("schema", "opensky")
 catalog = dbutils.widgets.get("catalog")
 schema  = dbutils.widgets.get("schema")
+dbutils.widgets.text("src_root", "")
+
+import sys, os
+nb_path = dbutils.notebook.entry_point.getDbutils().notebook().getContext().notebookPath().get()
+src_root = "/Workspace" + os.path.dirname(os.path.dirname(nb_path))
+sys.path.append(src_root)
+print(f"src_root: {src_root}")
+
+from transformations import open_first_version, altitude_band
 
 T = lambda name: f"{catalog}.{schema}.{name}"
 batch_ts = datetime.now()
@@ -55,13 +64,9 @@ first_version = Window.partitionBy("icao24").orderBy("__START_AT")
 # dim_aircraft: every SCD2 version from silver, with a surrogate key per VERSION.
 # Hashing icao24 together with __START_AT is what keeps versions distinct —
 # hashing the business key alone would give every version the same key.
-dim_aircraft = (spark.read.table(T("silver_aircraft"))
-    .withColumn("version_no", F.row_number().over(first_version))
+dim_aircraft = (open_first_version(spark.read.table(T("silver_aircraft")))
     .withColumn("aircraft_key", F.xxhash64("icao24", "__START_AT"))
     .withColumn("is_current", F.col("__END_AT").isNull())
-    .withColumn("valid_from",
-        F.when(F.col("version_no") == 1, F.lit("1900-01-01").cast("timestamp"))
-         .otherwise(F.col("__START_AT")))
     .withColumnRenamed("__END_AT", "valid_to")
     .withColumn("operator", F.coalesce("operator", F.lit("Unknown")))
     .withColumn("manufacturername", F.coalesce("manufacturername", F.lit("Unknown")))
@@ -83,7 +88,7 @@ dim_airport = (spark.read.table(T("silver_airports"))
             "latitude", "longitude", "elevation_ft", "iso_country", "municipality", "wikipedia_link"))
 save(dim_airport, "dim_airport")
 
-
+# FACT TABLE
 spark.sql(f"CREATE TABLE IF NOT EXISTS {T('cdc_watermark')} (table_name STRING, last_version BIGINT) USING DELTA")
 
 silver_version = spark.sql(f"DESCRIBE HISTORY {T('silver_positions')} LIMIT 1").collect()[0]["version"]
@@ -152,16 +157,12 @@ print(f"fact_positions: {n:,} rows  (mode={mode}, silver {rng})")
 fact = spark.read.table(T("fact_positions"))
 dim_a = spark.read.table(T("dim_aircraft"))
 
-# current_positions: latest observation per aircraft — this feeds the live map
+# current_positions: latest observation per aircraft this feeds the live map
 w = Window.partitionBy("icao24").orderBy(F.col("snapshot_ts").desc())
 current = (fact.withColumn("rn", F.row_number().over(w)).filter("rn = 1").drop("rn")
     .join(dim_a.select("aircraft_key", "registration", "manufacturername", "model", "operator", "typecode"),
           "aircraft_key", "left")
-    .withColumn("altitude_band",
-        F.when(F.col("on_ground"), "ground")
-         .when(F.col("baro_altitude") < 3000, "low")
-         .when(F.col("baro_altitude") < 9000, "mid")
-         .otherwise("cruise")))
+    .withColumn("altitude_band", altitude_band(F.col("baro_altitude"))))
 save(current, "current_positions")
 
 # agg_hourly_traffic: how busy the airspace is through the day
